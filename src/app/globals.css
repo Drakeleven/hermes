@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F5F8FF;
+  --foreground: #1F2340;
+  --panel: #FFFFFF;
+  --line: #E4E8F5;
+  --muted: #6B7091;
+  --malam: #4C3B8C;
+  --malam-soft: #EDE9FA;
+  --pagi: #FFB627;
+  --pagi-soft: #FFF4DA;
+  --pagi-border: #FFDB92;
+  --sore: #FF6F59;
+  --sore-soft: #FFE7E2;
+  --off: #B9BFD6;
+  --off-soft: #EEF0F9;
+  --good: #1FA97F;
+  --warn: #E6532B;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --font-sans: var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), JetBrains Mono, monospace;
+  --font-display: Fredoka, Inter, sans-serif;
+}
+
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+body {
+  background:
+    radial-gradient(ellipse 700px 400px at 8% -10%, #E9DDFF 0%, transparent 55%),
+    radial-gradient(ellipse 600px 380px at 100% 0%, #FFE6C9 0%, transparent 50%),
+    var(--background);
+  color: var(--foreground);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* focus ring */
+:focus-visible { outline: 2px solid var(--malam); outline-offset: 2px; }
+
+/* scrollbar for tables */
+.scroll-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }

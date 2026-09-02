@@ -1,25 +1,39 @@
 # hermes
 
-Repo for hermes project.
+Next.js 16 + TypeScript + Tailwind + ESLint (App Router, src/)
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/Drakeleven/hermes.git
-cd hermes
-git checkout development
+npm install
+npm run dev
 ```
+
+Open http://localhost:3000
 
 ## Branches
 
 - `main` - stable
-- `development` - active dev
+- `development` - active dev (default)
 
-## Structure
+## Scripts
 
-- `src/` - source
-- `docs/` - docs
+- `npm run dev` - dev server
+- `npm run build` - production build
+- `npm run start` - start prod
+- `npm run lint` - eslint
 
-## License
+## Stack
 
-MIT
+- Next.js 16.3.4 (App Router)
+- React 19
+- Tailwind CSS 4
+- TypeScript 5
+
+## Deploy
+
+```bash
+npm run build
+```
+
+See https://nextjs.org/docs/app/building-your-application/deploying
