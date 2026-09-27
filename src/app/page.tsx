@@ -71,9 +71,9 @@ export default function Home() {
   const [startDay, setStartDay] = useState("");
   const [existing, setExisting] = useState<Record<ShiftType, number>[]>(Array.from({ length: 5 }, () => ({ Malam: 0, Pagi: 0, Sore: 0 })));
   const [usePrev, setUsePrev] = useState(true);
-  const [prev2Malam, setPrev2Malam] = useState(["",""]);
-  const [prev2Pagi, setPrev2Pagi] = useState(["",""]);
-  const [prev2Sore, setPrev2Sore] = useState(["",""]);
+  const [prev6Malam, setPrev6Malam] = useState(Array(6).fill(""));
+  const [prev6Pagi, setPrev6Pagi] = useState(Array(6).fill(""));
+  const [prev6Sore, setPrev6Sore] = useState(Array(6).fill(""));
   const [cutiInputs, setCutiInputs] = useState(["","","","",""]);
   const [izinInputs, setIzinInputs] = useState(["","","","",""]);
   const [backupOrder, setBackupOrder] = useState<string[]>([]);
@@ -119,9 +119,12 @@ export default function Home() {
   function buildPrev(): PrevDay[] {
     if(!usePrev) return [];
     const out: PrevDay[]=[];
-    for(let idx=0; idx<2; idx++){
-      const m=prev2Malam[idx]?.trim(), p=prev2Pagi[idx]?.trim(), s=prev2Sore[idx]?.trim();
-      if(!m && !p && !s) continue;
+    for(let idx=0; idx<6; idx++){
+      const m=prev6Malam[idx]?.trim(), p=prev6Pagi[idx]?.trim(), s=prev6Sore[idx]?.trim();
+      if(!m && !p && !s) {
+        out.push({ assign: { Malam: "", Pagi: "", Sore: "" }, off: finalNames });
+        continue;
+      }
       const assign: Record<ShiftType,string> = { Malam:m||"", Pagi:p||"", Sore:s||"" };
       const used = new Set([m,p,s].filter(Boolean).map(x=> x.toLowerCase()));
       const off = finalNames.filter(n=> !used.has(n.toLowerCase()));
@@ -154,14 +157,14 @@ export default function Home() {
 
   function prevError(): string | null {
     if(!usePrev) return null;
-    for(let idx=0; idx<2; idx++){
-      const m=prev2Malam[idx]?.trim(), p=prev2Pagi[idx]?.trim(), s=prev2Sore[idx]?.trim();
+    for(let idx=0; idx<6; idx++){
+      const m=prev6Malam[idx]?.trim(), p=prev6Pagi[idx]?.trim(), s=prev6Sore[idx]?.trim();
       if(!m && !p && !s) continue;
-      if(!m || !p || !s) return `Lengkapi H-${2-idx} : Malam/Pagi/Sore harus terisi semua atau dikosongkan semua.`;
+      if(!m || !p || !s) return `Lengkapi riwayat H-${6-idx} : Malam/Pagi/Sore harus terisi semua atau dikosongkan semua.`;
       const vals=[m,p,s].map(v=> v.toLowerCase());
-      if(new Set(vals).size!==3) return `H-${2-idx} ada nama duplikat — tiap shift harus orang berbeda.`;
+      if(new Set(vals).size!==3) return `Riwayat H-${6-idx} ada nama duplikat — tiap shift harus orang berbeda.`;
       const allowed=finalNames.map(n=> n.toLowerCase());
-      for(const v of vals) if(!allowed.includes(v)) return `H-${2-idx} nama tidak ada di 5 anggota.`;
+      for(const v of vals) if(!allowed.includes(v)) return `Riwayat H-${6-idx} nama tidak ada di 5 anggota.`;
     }
     const cuti=buildCuti();
     const byDay: Record<number,number> = {};
@@ -293,16 +296,16 @@ export default function Home() {
             </label>
             {usePrev && (
               <div className="mt-4 space-y-4">
-                <div className="rounded-xl bg-[#F5F1FF] border border-[#E8E0FF] px-3.5 py-3 text-[12.5px] leading-6 text-[#3A2E70]">Jika H-1 akhir blok 2 hari → wajib libur tgl 1–2. Jika H-1 hari pertama blok → tgl 1 lanjut shift sama.</div>
-                {[0,1].map(idx=>{
-                  const label = idx===0 ? "H-2 (2 hari sebelum tgl 1)" : "H-1 (1 hari sebelum tgl 1)";
+                <div className="rounded-xl bg-[#F5F1FF] border border-[#E8E0FF] px-3.5 py-3 text-[12.5px] leading-6 text-[#3A2E70]">Masukkan hingga 6 hari terakhir bulan lalu untuk pola 2-hari & kontinuitas rotasi.</div>
+                {[0,1,2,3,4,5].map(idx=>{
+                  const label = `H-${6-idx} (2${idx+5} ${MONTH_NAMES[(month+11)%12]})`;
                   return (
                     <div key={idx} className="rounded-2xl border border-[#E4E8F5] bg-white p-3.5">
                       <div className="mb-2 text-[12px] font-bold tracking-wide text-[#4C3B8C]">{label}</div>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                         {(["Malam","Pagi","Sore"] as const).map(t=>{
-                          const vals = t==="Malam"? prev2Malam : t==="Pagi"? prev2Pagi : prev2Sore;
-                          const setVals = t==="Malam"? setPrev2Malam : t==="Pagi"? setPrev2Pagi : setPrev2Sore;
+                          const vals = t==="Malam"? prev6Malam : t==="Pagi"? prev6Pagi : prev6Sore;
+                          const setVals = t==="Malam"? setPrev6Malam : t==="Pagi"? setPrev6Pagi : setPrev6Sore;
                           return (
                             <label key={t} className="block">
                               <span className="mb-1 block text-[11px] font-bold tracking-wide" style={{color: t==="Malam"?"#4C3B8C": t==="Pagi"?"#8A5A00":"#FF6F59"}}>{t}</span>
@@ -314,11 +317,11 @@ export default function Home() {
                           );
                         })}
                       </div>
-                      <div className="mt-2 text-[11px] text-[#6B7091]">{(()=>{ const m=prev2Malam[idx],p=prev2Pagi[idx],s=prev2Sore[idx]; if(!m && !p && !s) return <span className="italic">Kosong</span>; const used=new Set([m,p,s].filter(Boolean).map(x=>x.toLowerCase())); const off=finalNames.filter(n=> !used.has(n.toLowerCase())); return <>Libur: <b>{off.join(", ")||"-"}</b></>; })()}</div>
+                      <div className="mt-2 text-[11px] text-[#6B7091]">{(()=>{ const m=prev6Malam[idx],p=prev6Pagi[idx],s=prev6Sore[idx]; if(!m && !p && !s) return <span className="italic">Kosong</span>; const used=new Set([m,p,s].filter(Boolean).map(x=>x.toLowerCase())); const off=finalNames.filter(n=> !used.has(n.toLowerCase())); return <>Libur: <b>{off.join(", ")||"-"}</b></>; })()}</div>
                     </div>
                   );
                 })}
-                <button onClick={()=>{ setPrev2Malam(["",""]); setPrev2Pagi(["",""]); setPrev2Sore(["",""]); }} className="rounded-xl border border-[#E4E8F5] bg-white px-4 py-2 text-[12px] font-bold text-[#6B7091]">Kosongkan</button>
+                <button onClick={()=>{ setPrev6Malam(Array(6).fill("")); setPrev6Pagi(Array(6).fill("")); setPrev6Sore(Array(6).fill("")); }} className="rounded-xl border border-[#E4E8F5] bg-white px-4 py-2 text-[12px] font-bold text-[#6B7091]">Kosongkan</button>
               </div>
             )}
           </div>
