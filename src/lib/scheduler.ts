@@ -52,10 +52,10 @@ export type SchedulerInput = {
   prev: PrevDay[];
   cuti: CutiEntry[];
   izin: IzinMove[];
-  backupOrder: string[]; // ordered high -> low priority
+  backupOrder: string[];
+  extraShiftAssign?: Record<ShiftType, string>; // Specify who gets extra shift on 31-day months
 };
 
-// ── helpers ──────────────────────────────────────────────────────────────────
 function normName(s:string){ return s.trim().toLowerCase(); }
 
 export function runScheduler(
@@ -72,15 +72,15 @@ export function runScheduler(
 }
 
 export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
-  const { names, year, month, daysInMonth:N, cuti: cutiInput, izin: izinInput, backupOrder } = input;
+  const { names, year, month, daysInMonth:N, cuti: cutiInput, izin: izinInput, backupOrder, extraShiftAssign } = input;
   let startDay = input.startDay || 1;
   if(startDay<1) startDay=1; if(startDay>N) startDay=N;
-  const prev: PrevDay[] = (input.prev||[]).slice(-2);
+  
+  // Accept lookback as long as user inputs
+  const prev: PrevDay[] = (input.prev||[]);
   const existingCounts = input.existingCounts;
 
   const totalSlots = 3 * (N - startDay + 1);
-  const base = Math.floor(totalSlots / 5);
-  const extra = totalSlots - base*5;
 
   const cutiByName = new Map<string, Set<number>>();
   (cutiInput||[]).forEach(c=>{
@@ -95,30 +95,34 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
   (izinInput||[]).forEach(m=>{
     const key=normName(m.person);
     if(!izinByName.has(key)) izinByName.set(key, new Set());
-    // from may be single, but we treat as entry with from..to
-    // For UI, izinInput is already per-move; we collect days
     izinByName.get(key)!.add(m.from);
     izinMoves.push(m);
   });
-  // also support legacy where single person multiple days - already covered
 
-  // backup rank map (lower = higher priority)
   const backupRank = new Map<string, number>();
   const ordered = (backupOrder && backupOrder.length? backupOrder : names);
   ordered.forEach((n,i)=>{
     const key=normName(n);
     if(!backupRank.has(key)) backupRank.set(key,i);
   });
-  // anyone missing gets large rank
   names.forEach(n=>{
     const k=normName(n);
     if(!backupRank.has(k)) backupRank.set(k, 999);
   });
 
   const people: Person[] = names.map((n,i)=>{
-    const targetTotal = 18;
-    const targetPerType = 6;
-    const target: Record<ShiftType,number> = {Malam: targetPerType, Pagi: targetPerType, Sore: targetPerType};
+    // Base is 18 (6/6/6)
+    const target: Record<ShiftType,number> = {Malam: 6, Pagi: 6, Sore: 6};
+    
+    // On 31-day months (total 93 shifts), 3 extra shifts must be distributed (+1 per type)
+    if (N === 31 && extraShiftAssign) {
+      SHIFT_TYPES.forEach(t => {
+        if (extraShiftAssign[t] && normName(extraShiftAssign[t]) === normName(n)) {
+          target[t] += 1; // total target for this person becomes 19 for this shift
+        }
+      });
+    }
+
     const already = (existingCounts && existingCounts[i]) ? existingCounts[i] : {Malam:0,Pagi:0,Sore:0};
     const remaining: Record<ShiftType,number> = {
       Malam: Math.max(0, target.Malam - (already.Malam||0)),
@@ -144,18 +148,17 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
     };
   });
 
-  // Seed from prev 2 days
+  // Seed from previous days history (dynamic lookback)
   type Hist = { dayOffset:number, type: ShiftType | 'OFF' };
   const histByName = new Map<string, Hist[]>();
   people.forEach(p=> histByName.set(normName(p.name), []));
   prev.forEach((pd, idx)=>{
-    const offset = prev.length===2 ? (idx===0?-2:-1) : -1;
+    const offset = idx - prev.length; // e.g. -2, -1
     const assignMap = new Map<string, ShiftType>();
     for(const t of SHIFT_TYPES){
       const nm = (pd.assign as Record<string,string>)[t];
       if(nm) assignMap.set(normName(nm), t as ShiftType);
     }
-    const offSet = new Set((pd.off||[]).map(normName));
     people.forEach(p=>{
       const key=normName(p.name);
       const arr=histByName.get(key)!;
@@ -163,6 +166,7 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
       else arr.push({dayOffset:offset, type:'OFF'});
     });
   });
+
   people.forEach(p=>{
     const key=normName(p.name);
     const h=histByName.get(key)!;
@@ -197,7 +201,6 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
   const schedule: DayRecord[] = [];
   const warnings: string[] = [];
 
-  // Phase 1: generate without izin as constraint (cuti only), izin will be swapped after
   for(let d=startDay; d<=N; d++){
     const dateObj = new Date(year, month, d);
     const dow = dateObj.getDay();
@@ -205,7 +208,6 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
     const usedToday = new Set<number>();
     const cutiToday = new Set<number>();
     people.forEach((p,i)=>{ if(p.cutiSet.has(d)) cutiToday.add(i); });
-    // izin NOT treated as cuti in phase1
 
     for(let i=0;i<5;i++){
       const p=people[i];
@@ -245,11 +247,10 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
         const anyWithLast = pool.some(i=> people[i].lastBlockType!=null);
         if(anyWithLast) warnings.push(`Hari ${d} ${type}: terpaksa shift mundur (bukan Malam→Pagi→Sore) karena ketersediaan.`);
       }
-      // scoring with backup priority on cuti days
+      
       const hasCutiToday = cutiToday.size>0;
       candidates.sort((a,b)=>{
         const pa=people[a], pb=people[b];
-        // if cuti day, prioritize backupOrder
         if(hasCutiToday){
           const ra=backupRank.get(normName(pa.name)) ?? 999;
           const rb=backupRank.get(normName(pb.name)) ?? 999;
@@ -295,9 +296,8 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
     schedule.push(dayRecord);
   }
 
-  // Phase 2: Izin swaps — pindah jadwal tanpa mengurangi proporsi
+  // Phase 2: Izin swaps
   const swaps: IzinSwap[] = [];
-  // group izin moves by from day ascending
   const sortedIzin = [...izinMoves].sort((a,b)=> a.from-b.from);
   for(const mv of sortedIzin){
     const personKey=normName(mv.person);
@@ -308,17 +308,16 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
     if(p.cutiSet.has(mv.from)){ warnings.push(`Izin ${p.name} tgl ${mv.from}: hari itu sudah cuti — izin tidak perlu.`); continue; }
     const dayRec = schedule.find(r=> r.day===mv.from);
     if(!dayRec){ warnings.push(`Izin ${p.name} tgl ${mv.from}: hari tidak ada di jadwal.`); continue; }
-    // find which shift person is on that day
+    
     let fromShift: ShiftType | null = null;
     for(const t of SHIFT_TYPES) if(dayRec.assign[t]===p.name) fromShift=t;
     if(!fromShift){
       warnings.push(`Izin ${p.name} tgl ${mv.from}: sudah libur hari itu — tidak perlu pindah.`);
       continue;
     }
-    // pick backup for izin day: best available off person (excluding cuti on that day, excluding izin person)
+    
     const izinDayCuti = new Set<number>();
     people.forEach((pp,i)=>{ if(pp.cutiSet.has(mv.from)) izinDayCuti.add(i); });
-    // candidates are off persons that day
     const offCandidates = dayRec.off.map(n=>{
       const idx=people.findIndex(pp=> pp.name===n);
       return idx;
@@ -327,51 +326,42 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
       warnings.push(`Izin ${p.name} tgl ${mv.from} ${fromShift}: tidak ada backup off yang tersedia — izin ditunda.`);
       continue;
     }
-    // choose backup using rank + fairness
+    
     offCandidates.sort((a,b)=>{
       const ra=backupRank.get(normName(people[a].name))??999;
       const rb=backupRank.get(normName(people[b].name))??999;
       if(ra!==rb) return ra-rb;
-      // also prefer those with lower total shifts (need)
       return people[a].totalShifts - people[b].totalShifts;
     });
     const backupIdx = offCandidates[0];
     const backupName = people[backupIdx].name;
 
-    // find replacement day
     let toDay: number | null = mv.to ?? null;
     let toShift: ShiftType | null = null;
     let swappedWith: string | null = null;
 
     const isValidReplacement = (d: number, shift: ShiftType): boolean => {
       if(d<=mv.from || d<startDay || d> N) return false;
-      if(p.cutiSet.has(d) || p.izinSet.has(d)) return false; // p wants to be off there? but replacement should be where p is off and can work
+      if(p.cutiSet.has(d) || p.izinSet.has(d)) return false;
       const rec=schedule.find(r=> r.day===d);
       if(!rec) return false;
-      if(rec.assign[shift]===p.name) return false; // already assigned
-      if(rec.assign[shift]==="(kosong)") return true; // empty slot ideal
-      // check if rec.off includes p (p is off)
+      if(rec.assign[shift]===p.name) return false;
+      if(rec.assign[shift]==="(kosong)") return true;
       if(!rec.off.includes(p.name)) return false;
-      // check backup/cuti not blocking
       const candIdx=people.findIndex(pp=> pp.name===rec.assign[shift]);
-      if(candIdx!==-1 && people[candIdx].cutiSet.has(d)) return false; // shouldn't swap cuti person
-      // streak/cooldown rough check: p must not be cooldown on d (we track via people cooldownUntil but that is post generation, not updated after swaps)
-      // For simplicity allow if p not already assigned previous day same block? Check previous day
+      if(candIdx!==-1 && people[candIdx].cutiSet.has(d)) return false;
       return true;
     };
 
     if(toDay!==null){
-      // manual toDay specified: find shift where p is off
       const rec=schedule.find(r=> r.day===toDay);
       if(!rec || !rec.off.includes(p.name)){
         warnings.push(`Izin ${p.name} tgl ${mv.from}→${toDay}: tgl tujuan bukan hari libur ${p.name} — auto cari tgl lain.`);
         toDay=null;
       } else {
-        // find shift to swap: prefer same type as fromShift if that shift occupant exists and not cuti
         if(rec.assign[fromShift] && rec.assign[fromShift]!=="(kosong)" && !people.find(pp=> pp.name===rec.assign[fromShift])?.cutiSet.has(toDay)){
           toShift=fromShift; swappedWith=rec.assign[fromShift];
         } else {
-          // find any shift
           for(const t of SHIFT_TYPES){
             if(rec.assign[t] && rec.assign[t]!=="(kosong)"){
               const occ=people.find(pp=> pp.name===rec.assign[t]);
@@ -386,13 +376,11 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
       }
     }
     if(toDay===null){
-      // auto find next feasible day
       let found=false;
       for(let d=mv.from+1; d<=N && !found; d++){
         if(p.cutiSet.has(d) || p.izinSet.has(d)) continue;
         const rec=schedule.find(r=> r.day===d);
         if(!rec || !rec.off.includes(p.name)) continue;
-        // try same shift first
         if(isValidReplacement(d, fromShift)){
           toDay=d; toShift=fromShift; swappedWith=rec.assign[fromShift]; found=true; break;
         }
@@ -402,22 +390,18 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
         }
       }
       if(!found){
-        warnings.push(`Izin ${p.name} tgl ${mv.from} ${fromShift}: tidak ada tgl pengganti kosong — jadwal tgl ${mv.from} tetap, proporsi tetap terjaga via fairness (total shift tidak berkurang karena izin tetap dihitung?).`);
+        warnings.push(`Izin ${p.name} tgl ${mv.from} ${fromShift}: tidak ada tgl pengganti kosong.`);
         continue;
       }
     }
-    // perform swap: izinDay: p out, backup in; toDay: swappedWith out, p in
-    // update counts
-    // izinDay
+
     dayRec.assign[fromShift]=backupName;
     dayRec.off = dayRec.off.filter(n=> n!==backupName);
     if(!dayRec.off.includes(p.name)) dayRec.off.push(p.name);
-    // adjust counts: p loses one, backup gains one on izinDay (but p will gain back on toDay, so net same)
-    // To keep counts correct, we decrement/increment
-    p.counts[fromShift]--; // p loses
+    
+    p.counts[fromShift]--;
     people[backupIdx].counts[fromShift]++;
 
-    // toDay
     const toRec=schedule.find(r=> r.day===toDay!)!;
     const occName=toRec.assign[toShift!];
     const occIdx=people.findIndex(pp=> pp.name===occName);
@@ -425,27 +409,20 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
     toRec.off = toRec.off.filter(n=> n!==p.name);
     if(occIdx!==-1){
       toRec.off.push(occName);
-      // counts: occ loses, p gains
       people[occIdx].counts[toShift!]--;
       people[occIdx].totalShifts--;
-      // occ offCount increment? we track offCount via people.offCount but that was computed from schedule; we need to keep consistent: offCount reflects schedule.
-      // For stats, we recompute offCount later from schedule or adjust.
       swappedWith=occName;
     } else {
-      // empty slot
       swappedWith="(kosong)";
       toRec.off = toRec.off.filter(n=> n!==p.name);
     }
-    p.counts[toShift!]++; // p gains back (net 0 if same type, else per-type shifts but total same)
-    // totalShifts net 0 for p, but backup and swapped person changed
+    p.counts[toShift!]++;
     people[backupIdx].totalShifts++;
-    if(occIdx!==-1) people[occIdx].totalShifts--; // but we already did counts; keep total consistent
-    // p total unchanged (lose then gain)
-    // update izin tracking
+    if(occIdx!==-1) people[occIdx].totalShifts--;
+    
     swaps.push({ person:p.name, fromDay: mv.from, fromShift, toDay: toDay!, toShift: toShift!, swappedWith, backupOnFrom: backupName });
   }
 
-  // Recompute offCount and maxStreak from final schedule for accuracy
   people.forEach(p=>{ p.offCount=0; p.curStreak=0; p.maxStreak=0; });
   for(const r of schedule){
     for(let i=0;i<people.length;i++){
@@ -453,12 +430,11 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
       if(r.off.includes(pp.name)){
         pp.offCount++; pp.curStreak=0;
       } else {
-        // they worked
         pp.curStreak++; pp.maxStreak=Math.max(pp.maxStreak, pp.curStreak);
       }
     }
   }
-  // fairness and coverage
+
   const totals=people.map(p=> p.totalShifts);
   const avg=totals.reduce((a,b)=>a+b,0)/totals.length;
   const variance=totals.reduce((a,b)=> a+ (b-avg)*(b-avg),0)/totals.length;

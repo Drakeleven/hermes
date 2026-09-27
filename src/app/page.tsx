@@ -196,7 +196,10 @@ export default function Home() {
     setResult(r);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   }
-  function handleRegenerate() { handleGenerate(); }
+  function handleRegenerate() { 
+    // force clean state if needed
+    handleGenerate(); 
+  }
   function handleBack() { setResult(null); }
 
   function moveBackup(idx:number, dir:number){
