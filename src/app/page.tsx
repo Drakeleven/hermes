@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { MONTH_NAMES, DOW_NAMES, SHIFT_TYPES, runSchedulerV2, weekNumberFor } from "@/lib/scheduler";
+import { MONTH_NAMES, DOW_NAMES, SHIFT_TYPES, runSchedulerV3, weekNumberFor } from "@/lib/scheduler";
 import { downloadExcel } from "@/lib/excel";
-import type { ShiftType, SchedulerResult, DayRecord, PrevDay, CutiEntry, IzinMove } from "@/lib/scheduler";
+import type { ShiftType, SchedulerResult, DayRecord, PrevDay, CutiEntry, IzinMove, LeaveRequest, IzinRequest } from "@/lib/scheduler";
 
 function Pill({ variant, children }: { variant: "malam" | "pagi" | "sore" | "off" | "cuti" | "izin"; children: React.ReactNode }) {
   const cls: Record<string, string> = {
@@ -190,9 +190,17 @@ export default function Home() {
     }
     const prev = buildPrev();
     const cuti = buildCuti();
+    const leavesRaw: LeaveRequest[] = [];
+const leavesRaw: LeaveRequest[] = [];
+    cuti.forEach((c: any) => c.days.forEach((d: number) => leavesRaw.push({ name: c.person, day: d })));
+    
     const izin = buildIzin();
+    const izinsRaw: IzinRequest[] = izin.map(iz => ({ name: iz.person, day: iz.from }));
+    
     const backup = buildBackup();
-    const r = runSchedulerV2({ names: fNames, year, month, daysInMonth, startDay: sd, existingCounts: ec, prev, cuti, izin, backupOrder: backup });
+    const backupRanks = names.map(n => backup.indexOf(n) + 1);
+
+    const r = runSchedulerV3(fNames, year, month, daysInMonth, sd, ec, prev, leavesRaw, izinsRaw, backupRanks);
     setResult(r);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   }
