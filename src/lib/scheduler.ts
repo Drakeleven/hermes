@@ -231,7 +231,13 @@ export function runSchedulerV2(input: SchedulerInput): SchedulerResult {
 
     for(let idx=0; idx<emptyTypes.length; idx++){
       const type = emptyTypes[idx];
-      let pool = people.map((_,i)=>i).filter(i=> !usedToday.has(i) && !cutiToday.has(i) && people[i].cooldownUntil <= d);
+      let pool = people.map((_,i)=>i).filter(i=> {
+        if (usedToday.has(i) || cutiToday.has(i)) return false;
+        if (people[i].cooldownUntil > d) return false;
+        const limit = (N === 31 && extraShiftAssign && Object.values(extraShiftAssign).some(val => normName(val) === normName(people[i].name))) ? 19 : 18;
+        if (people[i].totalShifts >= limit) return false;
+        return true;
+      });
       if(pool.length===0){
         pool = people.map((_,i)=>i).filter(i=> !usedToday.has(i) && !cutiToday.has(i));
         if(pool.length>0) warnings.push(`Hari ${d} ${type}: semua orang masih cooldown — rotasi terpaksa dilanggar.`);

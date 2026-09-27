@@ -77,6 +77,7 @@ export default function Home() {
   const [cutiInputs, setCutiInputs] = useState(["","","","",""]);
   const [izinInputs, setIzinInputs] = useState(["","","","",""]);
   const [backupOrder, setBackupOrder] = useState<string[]>([]);
+  const [extraAssign, setExtraAssign] = useState<Record<ShiftType, string>>({ Malam: "", Pagi: "", Sore: "" });
   const [result, setResult] = useState<SchedulerResult | null>(null);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
@@ -192,7 +193,7 @@ export default function Home() {
     const cuti = buildCuti();
     const izin = buildIzin();
     const backup = buildBackup();
-    const r = runSchedulerV2({ names: fNames, year, month, daysInMonth, startDay: sd, existingCounts: ec, prev, cuti, izin, backupOrder: backup });
+    const r = runSchedulerV2({ names: fNames, year, month, daysInMonth, startDay: sd, existingCounts: ec, prev, cuti, izin, backupOrder: backup, extraShiftAssign: daysInMonth === 31 ? extraAssign : undefined });
     setResult(r);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   }
@@ -322,24 +323,22 @@ export default function Home() {
             )}
           </div>
 
-          {/* Backup Order */}
           <div className="mt-6 rounded-2xl border border-[#FDE68A] bg-[#FFFBEB] p-4 sm:p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-[14px] font-bold text-[#92400E]">Backup Order — siapa isi slot kosong saat cuti?</h3>
-              <span className="rounded-full bg-white border border-[#FDE68A] px-3 py-1 text-[11px] font-bold text-[#92400E]">Prioritas 1 = dipanggil dulu</span>
+              <h3 className="text-[14px] font-bold text-[#92400E]">Extra Shift (Bulan 31 Hari)</h3>
             </div>
-            <p className="mt-1 text-[12.5px] leading-5 text-[#92400E]/80">Atur urutan 1–5. Saat ada cuti/izin, slot kosong diisi sesuai urutan ini + mempertimbangkan fairness (tidak merugikan). Default = urutan anggota 1→5.</p>
-            <div className="mt-3 space-y-2">
-              {buildBackup().map((name, idx)=>(
-                <div key={name} className="flex items-center gap-2 rounded-xl border border-[#FDE68A] bg-white px-3 py-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#92400E] text-xs font-black text-white">{idx+1}</span>
-                  <span className="flex-1 text-[13px] font-bold text-[#1F2340]">{name}</span>
-                  <button onClick={()=> moveBackup(idx,-1)} disabled={idx===0} className="rounded-lg border border-[#E4E8F5] bg-[#FBFCFF] px-2 py-1 text-xs font-bold disabled:opacity-30">↑</button>
-                  <button onClick={()=> moveBackup(idx,1)} disabled={idx===4} className="rounded-lg border border-[#E4E8F5] bg-[#FBFCFF] px-2 py-1 text-xs font-bold disabled:opacity-30">↓</button>
+            <p className="mt-1 text-[12.5px] leading-5 text-[#92400E]/80">Pilih 3 anggota untuk mendapatkan +1 shift (Malam/Pagi/Sore) jika bulan 31 hari.</p>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {(['Malam', 'Pagi', 'Sore'] as const).map(t => (
+                <div key={t}>
+                  <label className="text-[11px] font-bold text-[#92400E]">{t}</label>
+                  <select value={extraAssign[t]} onChange={(e)=>setExtraAssign({...extraAssign, [t]: e.target.value})} className="w-full rounded-xl border border-[#FDE68A] bg-white px-3 py-2 text-[13px]">
+                    <option value="">— Pilih Orang —</option>
+                    {finalNames.map(n=><option key={n} value={n}>{n}</option>)}
+                  </select>
                 </div>
               ))}
             </div>
-            <div className="mt-2 text-[11px] text-[#92400E]/70">Urutan saat ini: <b>{buildBackup().join(" → ")}</b></div>
           </div>
 
           <div className="mt-6 rounded-2xl border border-[#E4E8F5] bg-[#FBFCFF] p-4 sm:p-5">
