@@ -191,7 +191,6 @@ export default function Home() {
     const prev = buildPrev();
     const cuti = buildCuti();
     const leavesRaw: LeaveRequest[] = [];
-const leavesRaw: LeaveRequest[] = [];
     cuti.forEach((c: any) => c.days.forEach((d: number) => leavesRaw.push({ name: c.person, day: d })));
     
     const izin = buildIzin();
