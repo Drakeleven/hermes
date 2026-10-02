@@ -294,10 +294,13 @@ export default function Home() {
           </div>
 
           <div className="mt-6 rounded-2xl border border-[#E4E8F5] bg-[#FBFCFF] p-4 sm:p-5">
-            <label className="flex cursor-pointer items-center gap-3">
-              <input type="checkbox" checked={usePrev} onChange={(e)=> setUsePrev(e.target.checked)} className="h-[18px] w-[18px] accent-[#4C3B8C]" />
-              <span className="text-[14px] font-bold text-[#1F2340]">Gunakan 2 hari sebelum bulan ini (agar tgl 1–2 tidak nabrak)</span>
-            </label>
+{/* Opsi Kontinuitas dihapus */}
+            {false && (
+              <label className="flex cursor-pointer items-center gap-3">
+                <input type="checkbox" checked={usePrev} onChange={(e)=> setUsePrev(e.target.checked)} className="h-[18px] w-[18px] accent-[#4C3B8C]" />
+                <span className="text-[14px] font-bold text-[#1F2340]">Opsi Kontinuitas Jadwal</span>
+              </label>
+            )}
             {usePrev && (
               <div className="mt-4 space-y-4">
                 <div className="rounded-xl bg-[#F5F1FF] border border-[#E8E0FF] px-3.5 py-3 text-[12.5px] leading-6 text-[#3A2E70]">Masukkan hingga 6 hari terakhir bulan lalu untuk pola 2-hari & kontinuitas rotasi.</div>
