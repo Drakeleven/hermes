@@ -566,7 +566,7 @@ export default function Home() {
           </div>
         </>
       )}
-      <p className="mt-8 text-center text-xs leading-5 text-[#6B7091]/70">v4 Backup+Izin — cuti→backup order · izin→swap pindah · fairness preserved<br/>Stack: Next.js 16 · Tailwind 4 · xlsx · TypeScript</p>
+      <p className="mt-8 text-center text-xs leading-5 text-[#6B7091]/70">25596d5 · development — cuti→backup order · izin→swap pindah · fairness preserved<br/>Stack: Next.js 16 · Tailwind 4 · xlsx · TypeScript</p>
     </div>
   );
 }
