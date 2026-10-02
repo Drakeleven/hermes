@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { MONTH_NAMES, DOW_NAMES, SHIFT_TYPES, runSchedulerV2, weekNumberFor } from "@/lib/scheduler";
 import { downloadExcel } from "@/lib/excel";
 import type { ShiftType, SchedulerResult, DayRecord, PrevDay, CutiEntry, IzinMove } from "@/lib/scheduler";
+import { getGitInfo } from "@/lib/git";
 
 function Pill({ variant, children }: { variant: "malam" | "pagi" | "sore" | "off" | "cuti" | "izin"; children: React.ReactNode }) {
   const cls: Record<string, string> = {
@@ -80,7 +81,13 @@ export default function Home() {
   const [extraAssign, setExtraAssign] = useState<Record<ShiftType, string>>({ Malam: "", Pagi: "", Sore: "" });
   const [result, setResult] = useState<SchedulerResult | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [gitInfo, setGitInfo] = useState({ commitSha: "dev", branch: "development" });
   useEffect(() => setHydrated(true), []);
+  useEffect(() => {
+    try {
+      setGitInfo(getGitInfo());
+    } catch {}
+  }, []);
   useEffect(() => {
     if (lastManualDay) {
       const v = parseInt(lastManualDay, 10);
@@ -566,7 +573,7 @@ export default function Home() {
           </div>
         </>
       )}
-      <p className="mt-8 text-center text-xs leading-5 text-[#6B7091]/70">2a43607 · development — cuti→backup order · izin→swap pindah · fairness preserved<br/>Stack: Next.js 16 · Tailwind 4 · xlsx · TypeScript</p>
+      <p className="mt-8 text-center text-xs leading-5 text-[#6B7091]/70">{gitInfo.commitSha} · {gitInfo.branch} — cuti→backup order · izin→swap pindah · fairness preserved<br/>Stack: Next.js 16 · Tailwind 4 · xlsx · TypeScript</p>
     </div>
   );
 }
