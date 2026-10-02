@@ -237,8 +237,8 @@ export default function Home() {
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-[0.14em] uppercase backdrop-blur">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" /> Managed Service · Monitoring ETL 24/7
             </span>
-            <span className="hidden sm:inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[11px] font-bold tracking-wide text-[#4C3B8C]">v4 · Backup+Izin</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[11px] font-semibold backdrop-blur">2-day lookback · Cuti + Backup · Izin Pindah</span>
+            <span className="hidden sm:inline-flex items-center rounded-full bg-white px-2.5 py-1 text-[11px] font-bold tracking-wide text-[#4C3B8C]">v8 · Rotasi Mutlak</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 border border-white/20 px-3 py-1 text-[11px] font-semibold backdrop-blur">6-day lookback · Extra Shift 31-Hari · Hard Cap 18/19</span>
           </div>
           <h1 className="max-w-[720px] text-[26px] font-bold leading-[1.15] tracking-tight sm:text-[30px]">Generator Jadwal Shift Bulanan</h1>
           <p className="mt-2.5 max-w-[700px] text-[14px] leading-[1.6] text-white/85">
