@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { MONTH_NAMES, DOW_NAMES, SHIFT_TYPES, runSchedulerV2, weekNumberFor } from "@/lib/scheduler";
 import { downloadExcel } from "@/lib/excel";
 import type { ShiftType, SchedulerResult, DayRecord, PrevDay, CutiEntry, IzinMove } from "@/lib/scheduler";
+import { fetchConfig } from "@/lib/supabase";
 
 function Pill({ variant, children }: { variant: "malam" | "pagi" | "sore" | "off" | "cuti" | "izin"; children: React.ReactNode }) {
   const cls: Record<string, string> = {
@@ -84,7 +85,11 @@ export default function Home() {
     commitSha: process.env.NEXT_PUBLIC_COMMIT_SHA || "dev", 
     branch: process.env.NEXT_PUBLIC_BRANCH || "development" 
   });
-  useEffect(() => setHydrated(true), []);
+  const [appConfig, setAppConfig] = useState<any>(null);
+  useEffect(() => {
+    setHydrated(true);
+    fetchConfig('app_settings').then(setAppConfig);
+  }, []);
   useEffect(() => {
     if (lastManualDay) {
       const v = parseInt(lastManualDay, 10);
