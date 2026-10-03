@@ -4,6 +4,7 @@ import { MONTH_NAMES, DOW_NAMES, SHIFT_TYPES, runSchedulerV2, weekNumberFor } fr
 import { downloadExcel } from "@/lib/excel";
 import type { ShiftType, SchedulerResult, DayRecord, PrevDay, CutiEntry, IzinMove } from "@/lib/scheduler";
 import { fetchConfig } from "@/lib/supabase";
+import ConfigMenu from "@/components/ConfigMenu";
 
 function Pill({ variant, children }: { variant: "malam" | "pagi" | "sore" | "off" | "cuti" | "izin"; children: React.ReactNode }) {
   const cls: Record<string, string> = {
@@ -579,6 +580,7 @@ export default function Home() {
         </>
       )}
       <p className="mt-8 text-center text-xs leading-5 text-[#6B7091]/70">{gitInfo.commitSha} · {gitInfo.branch} — cuti→backup order · izin→swap pindah · fairness preserved<br/>Stack: Next.js 16 · Tailwind 4 · xlsx · TypeScript</p>
+      <ConfigMenu config={appConfig} />
     </div>
   );
 }
